@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_ip/get_ip.dart';
 import 'package:toast/toast.dart';
-import 'package:wifi/wifi.dart';
 import 'theappbar.dart';
 import 'dart:async';
 import 'dart:io';
 import 'functionbtns.dart';
 import 'odserver.dart';
 import 'knob.dart';
-
-
 
 class ThrottlePage extends StatefulWidget {
   ThrottlePage({Key key, this.title}) : super(key: key);
@@ -53,7 +50,7 @@ class _ThrottlePageState extends State<ThrottlePage> {
       isLocoSet = false; 
       isPowOn = false; 
     });
-    initPlatformState();
+    //initPlatformState();
   }
 
   bool allSet(){
@@ -69,12 +66,6 @@ class _ThrottlePageState extends State<ThrottlePage> {
     }
   }
 
-//This Function provides local IP address i.e. Mobile
-  Future<InternetAddress> get selfIP async {
-      String ip = await Wifi.ip;
-      print('WIFI PLUGIN The Local IP is: $ip');
-      return InternetAddress(ip);
-  }
   Future<void> initPlatformState() async {
     String ipAddress = "Unknown";
     // Platform messages may fail, so we use a try/catch PlatformException.
@@ -99,10 +90,6 @@ class _ThrottlePageState extends State<ThrottlePage> {
  * UNO or MEGA. Needs to be implemented according to Protocol. */
 
 // IOS InternetAddress.anyIPv4 //Android _localIP //Endpoint.any(port: Port(4333))
-
-/* Currently, temporarily, the following functions will use 
- * a UDP socket and send command packets to ESP connected to 
- * UNO or MEGA. Needs to be implemented according to our Protocol. */
 
   void setSocket(){
      new Timer(const Duration(milliseconds: 200), () {
@@ -199,107 +186,100 @@ class _ThrottlePageState extends State<ThrottlePage> {
        body: Builder(
         builder: (context) =>
         SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    DccServer(
-                        setOdServerDetails : (String ip, int port){         
-                          //Toast.show(_udpSocket.toString(), context, duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);                   
-                          print(_udpSocket);
-                          if (_udpSocket != null) {
-                            _udpSocket.close();
-                             setSocket();
-                          }else{
-                            setSocket();
-                          }                          
-                          setState(() {
-                            _server   = ip;
-                            _port     = port;
-                            _address  = InternetAddress(ip); 
-                             isCSSet  = true;
-                          });
-                          connectToUDP();
-                          Scaffold.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('SET:=> \nServer: $ip, \nPort: $port'),
-                            )
-                          );
-                          print("IP $ip SET"); 
-                        },                       
-                        disconnectServer: (){
-                          setState(() {
-                            isCSSet = false;                        
-                            _udpSocket.close();
-                            Toast.show('Server Disconnected', context, duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);                   
-                          });
-                        },
-                        togglePower : (int pow){                          
-                          if(isCSSet){
-                            String cmd = "<"+pow.toString()+">";
-                            setState(() {
-                              _power = pow;                        
-                              sendFunctionCommandToStation(cmd); 
-                              if(_power==1){
-                                isPowOn = true;
-                              }else{
-                                isPowOn = false;
-                              }                             
+          scrollDirection: Axis.vertical,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              DccServer(
+                  setOdServerDetails : (String ip, int port){         
+                    //Toast.show(_udpSocket.toString(), context, duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
+                    if (_udpSocket != null) {
+                      _udpSocket.close();
+                       setSocket();
+                    }else{
+                      setSocket();
+                    }                          
+                    setState(() {
+                      _server   = ip;
+                      _port     = port;
+                      _address  = InternetAddress(ip); 
+                        isCSSet  = true;
+                    });
+                    connectToUDP();
+                    Scaffold.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('SET:=> \nServer: $ip, \nPort: $port'),
+                      )
+                    );
+                    print("IP $ip SET"); 
+                  },                       
+                  disconnectServer: (){
+                    setState(() {
+                      isCSSet = false;                        
+                      _udpSocket.close();
+                      Toast.show('Server Disconnected', context, duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);                   
+                    });
+                  },
+                  togglePower : (int pow){                          
+                    if(isCSSet){
+                      String cmd = "<"+pow.toString()+">";
+                      setState(() {
+                        _power = pow;                        
+                        sendFunctionCommandToStation(cmd); 
+                        if(_power==1){
+                          isPowOn = true;
+                        }else{
+                          isPowOn = false;
+                        }                             
+                      });
+                      print(cmd);
+                    }
+                  },
+                  setLoco: (int cv){
+                    setState(() {
+                      _cv = cv;
+                      if(_cv !=0){                                 
+                        isLocoSet = true;
+                      }else{
+                        isLocoSet = false;
+                      }
+                    });
+                  },                     
+              ),
+                
+                Container(
+                  child: Column(
+                    children: [
+                      ThrottleKnob(
+                        serverStatus: isCSSet,
+                        setThrottleDetails: (int dir, int speed){ 
+                          if(allSet()){
+                            setState(() { 
+                              _direction = dir;
+                              _speed = speed;
+                              String cmd = "<t 01 $_cv $_speed $_direction>";
+                              sendCommandToStation(cmd);
+                              print(cmd);
                             });
-                            print(cmd);
                           }
                         },
-                        setLoco: (int cv){
-                          setState(() {
-                            _cv = cv;
-                            if(_cv !=0){                                 
-                              isLocoSet = true;
-                            }else{
-                              isLocoSet = false;
-                            }
-                          });
-                        },                     
-                    ),
-                      
-                      Container(
-                        child: Column(
-                          children: [
-                            ThrottleKnob(
-                              serverStatus: isCSSet,
-                              setThrottleDetails: (int dir, int speed){ 
-                                if(allSet()){
-                                  setState(() { 
-                                    _direction = dir;
-                                    _speed = speed;
-                                    String cmd = "<t 01 $_cv $_speed $_direction>";
-                                    sendCommandToStation(cmd);
-                                    print(cmd);
-                                  });
-                                }
-                              },
-
-                              /*serverFormClose: (bool close){
-                                setState(() {
-                                  formClose = close;
-                                });                        
-                              },*/
-                            ),
-                            FunctionButtons(
-                              sendFunction: (String func){              
-                                if(allSet()){
-                                  String cmd = "<f $_cv $func>";    
-                                  setState(() {                           
-                                    sendFunctionCommandToStation(cmd);
-                                    print(cmd);
-                                  });
-                                }
-                              },
-                            ),
-                          ],
-                        ),
                       ),
-                  ]
+                      FunctionButtons(
+                        sendFunction: (String func){              
+                          if(allSet()){
+                            String cmd = "<f $_cv $func>";    
+                            setState(() {                           
+                              sendFunctionCommandToStation(cmd);
+                              print(cmd);
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
                 ),
+            ]
+          ),
         ),
        ),
      ); 
